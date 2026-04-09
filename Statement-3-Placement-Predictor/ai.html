@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Placement Readiness System</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f0;
+    --bg-tertiary: #eeede8;
+    --text-primary: #1a1a1a;
+    --text-secondary: #666660;
+    --border: rgba(0,0,0,0.12);
+    --border-hover: rgba(0,0,0,0.25);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --purple-50: #EEEDFE; --purple-100: #CECBF6; --purple-200: #AFA9EC;
+    --purple-400: #7F77DD; --purple-600: #534AB7; --purple-800: #3C3489; --purple-900: #26215C;
+    --teal-50: #E1F5EE; --teal-100: #9FE1CB; --teal-200: #5DCAA5;
+    --teal-400: #1D9E75; --teal-600: #0F6E56; --teal-800: #085041;
+    --amber-50: #FAEEDA; --amber-400: #BA7517; --amber-200: #EF9F27;
+    --blue-50: #E6F1FB; --blue-200: #85B7EB; --blue-600: #185FA5;
+    --green-50: #EAF3DE; --green-200: #97C459; --green-600: #3B6D11;
+    --coral-50: #FAECE7; --coral-200: #F0997B; --coral-600: #993C1D;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f0efe8;
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  #app {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 22px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+  .header p { font-size: 14px; color: var(--text-secondary); }
+  .workflow-pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 1rem; }
+  .wpill {
+    font-size: 12px; padding: 4px 12px; border-radius: 20px;
+    font-weight: 500;
+  }
+  .wpill-1 { background: var(--purple-50); color: var(--purple-800); border: 0.5px solid var(--purple-200); }
+  .wpill-2 { background: var(--blue-50); color: var(--blue-600); border: 0.5px solid var(--blue-200); }
+  .wpill-3 { background: var(--teal-50); color: var(--teal-600); border: 0.5px solid var(--teal-200); }
+  .wpill-4 { background: var(--amber-50); color: var(--amber-400); border: 0.5px solid var(--amber-200); }
+
+  /* Tabs */
+  .phase-tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .phase-tab {
+    padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500;
+    border: 0.5px solid var(--border-hover); cursor: pointer;
+    background: var(--bg-primary); color: var(--text-secondary);
+    transition: all 0.2s; user-select: none;
+  }
+  .phase-tab:hover { border-color: var(--purple-200); color: var(--purple-600); }
+  .phase-tab.active { background: var(--purple-50); color: var(--purple-800); border-color: var(--purple-200); }
+  .phase-tab.done { background: var(--green-50); color: var(--green-600); border-color: var(--green-200); }
+  .phase-tab.done::after { content: ' ✓'; }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Chat */
+  .chat-area {
+    border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+    height: 360px; overflow-y: auto; padding: 1rem;
+    background: var(--bg-secondary);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.user { flex-direction: row-reverse; }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+  }
+  .bot-av { background: var(--purple-50); color: var(--purple-800); border: 0.5px solid var(--purple-200); }
+  .user-av { background: var(--teal-50); color: var(--teal-600); border: 0.5px solid var(--teal-200); }
+  .bubble {
+    max-width: 78%; padding: 10px 14px; font-size: 14px; line-height: 1.55;
+    border: 0.5px solid var(--border); background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+  .msg.bot .bubble { border-radius: 4px 14px 14px 14px; }
+  .msg.user .bubble {
+    background: var(--purple-50); border-color: var(--purple-200);
+    color: var(--purple-900); border-radius: 14px 4px 14px 14px;
+  }
+  .typing { display: flex; gap: 5px; align-items: center; padding: 10px 14px; }
+  .typing span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--purple-200); animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-7px)} }
+
+  .chat-input-row { display: flex; gap: 8px; margin-top: 12px; }
+  .chat-input-row input {
+    flex: 1; padding: 10px 14px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-hover); background: var(--bg-primary);
+    color: var(--text-primary); font-size: 14px;
+    font-family: inherit; outline: none; transition: border-color 0.2s;
+  }
+  .chat-input-row input:focus { border-color: var(--purple-400); }
+  .send-btn {
+    padding: 10px 20px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--purple-200); background: var(--purple-50);
+    color: var(--purple-800); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .send-btn:hover { background: var(--purple-100); }
+  .send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Misc */
+  .step-hint { font-size: 13px; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5; }
+  .section-title { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 0.75rem; }
+  .alert {
+    padding: 10px 14px; border-radius: var(--radius-md);
+    font-size: 13px; margin-bottom: 1rem; line-height: 1.5;
+  }
+  .alert-info { background: var(--blue-50); color: var(--blue-600); border: 0.5px solid var(--blue-200); }
+  .alert-success { background: var(--green-50); color: var(--green-600); border: 0.5px solid var(--green-200); }
+
+  /* JSON box */
+  .json-box {
+    border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+    background: #1e1e2e; padding: 1.25rem; font-family: 'Courier New', monospace;
+    font-size: 13px; line-height: 1.7; white-space: pre-wrap;
+    word-break: break-word; min-height: 200px; color: #cdd6f4;
+  }
+  .json-key { color: #89b4fa; }
+  .json-str { color: #a6e3a1; }
+  .json-num { color: #fab387; }
+  .json-bool { color: #f38ba8; }
+
+  /* Score */
+  .score-display { text-align: center; padding: 1.5rem 1rem 1rem; }
+  .score-ring-wrap { position: relative; width: 170px; height: 170px; margin: 0 auto 1.25rem; }
+  .score-ring-wrap svg { width: 170px; height: 170px; }
+  .score-number {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 40px; font-weight: 500; color: var(--text-primary);
+  }
+  .score-verdict { font-size: 16px; font-weight: 500; color: var(--text-primary); }
+  .score-desc { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .score-breakdown {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px; margin-top: 1.5rem;
+  }
+  .score-card {
+    background: var(--bg-secondary); border: 0.5px solid var(--border);
+    border-radius: var(--radius-md); padding: 12px;
+  }
+  .score-card .sc-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .score-card .sc-value { font-size: 20px; font-weight: 500; color: var(--text-primary); }
+  .bar-track { height: 4px; border-radius: 2px; background: var(--border); margin-top: 8px; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+
+  /* RAG */
+  .rag-grid { display: flex; flex-direction: column; gap: 14px; }
+  .exp-card {
+    border: 0.5px solid var(--border); border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem; background: var(--bg-primary); transition: border-color 0.2s;
+  }
+  .exp-card:hover { border-color: var(--border-hover); }
+  .exp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 10px; }
+  .exp-meta .exp-name { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+  .exp-meta .exp-company { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+  .sim-badge {
+    font-size: 12px; padding: 4px 10px; border-radius: 20px; flex-shrink: 0;
+    background: var(--teal-50); color: var(--teal-600); border: 0.5px solid var(--teal-200);
+    white-space: nowrap;
+  }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .tag {
+    font-size: 12px; padding: 3px 10px; border-radius: 20px;
+    background: var(--purple-50); color: var(--purple-600); border: 0.5px solid var(--purple-200);
+  }
+  .exp-snippet { font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+
+  /* CTA */
+  .cta-row { margin-top: 1.25rem; display: flex; gap: 10px; flex-wrap: wrap; }
+  .cta-btn {
+    padding: 10px 20px; border-radius: var(--radius-md); font-size: 14px;
+    font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  .cta-primary {
+    background: var(--purple-50); color: var(--purple-800);
+    border: 0.5px solid var(--purple-200);
+  }
+  .cta-primary:hover { background: var(--purple-100); }
+  .cta-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .cta-secondary {
+    background: var(--bg-secondary); color: var(--text-primary);
+    border: 0.5px solid var(--border-hover);
+  }
+  .cta-secondary:hover { background: var(--bg-primary); }
+  .spinner {
+    display: inline-block; width: 13px; height: 13px;
+    border: 2px solid var(--purple-200); border-top-color: var(--purple-600);
+    border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Arch diagram */
+  .arch-card {
+    background: var(--bg-primary); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem;
+  }
+  .arch-row { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+  .arch-node {
+    flex: 1; min-width: 130px; text-align: center; padding: 14px 8px;
+    border-radius: var(--radius-md); border: 0.5px solid var(--border);
+    background: var(--bg-secondary);
+  }
+  .arch-node .node-num { font-size: 11px; font-weight: 500; margin-bottom: 4px; }
+  .arch-node .node-title { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+  .arch-node .node-sub { font-size: 11px; color: var(--text-secondary); }
+  .arch-arrow { color: var(--text-secondary); padding: 0 6px; font-size: 18px; }
+  .n1 { background: var(--purple-50); border-color: var(--purple-200); }
+  .n1 .node-num { color: var(--purple-600); }
+  .n2 { background: var(--blue-50); border-color: var(--blue-200); }
+  .n2 .node-num { color: var(--blue-600); }
+  .n3 { background: var(--teal-50); border-color: var(--teal-200); }
+  .n3 .node-num { color: var(--teal-600); }
+  .n4 { background: var(--amber-50); border-color: var(--amber-200); }
+  .n4 .node-num { color: var(--amber-400); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Placement Readiness System</h1>
+    <p>Hybrid AI — Generative profiling + Regression scoring + RAG experience retrieval</p>
+    <div class="workflow-pills">
+      <span class="wpill wpill-1">1. Chat Profiling</span>
+      <span class="wpill wpill-2">2. LLM Extraction</span>
+      <span class="wpill wpill-3">3. Regression Score</span>
+      <span class="wpill wpill-4">4. Experience RAG</span>
+    </div>
+  </div>
+
+  <!-- Architecture overview -->
+  <div class="arch-card">
+    <div class="arch-row">
+      <div class="arch-node n1"><div class="node-num">STEP 1</div><div class="node-title">Chat Bot</div><div class="node-sub">Natural language profiling</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node n2"><div class="node-num">STEP 2</div><div class="node-title">LLM Extract</div><div class="node-sub">JSON structured output</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node n3"><div class="node-num">STEP 3</div><div class="node-title">Regression</div><div class="node-sub">Readiness score 0–100</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node n4"><div class="node-num">STEP 4</div><div class="node-title">RAG Retrieval</div><div class="node-sub">Relevant senior experiences</div></div>
+    </div>
+  </div>
+
+  <!-- Phase Tabs -->
+  <div class="phase-tabs">
+    <div class="phase-tab active" id="tab-1" onclick="switchTab(1)">1. Chat Profiling</div>
+    <div class="phase-tab" id="tab-2" onclick="switchTab(2)">2. Structured Extraction</div>
+    <div class="phase-tab" id="tab-3" onclick="switchTab(3)">3. Readiness Score</div>
+    <div class="phase-tab" id="tab-4" onclick="switchTab(4)">4. Experience RAG</div>
+  </div>
+
+  <!-- Panel 1: Chat -->
+  <div class="panel active" id="panel-1">
+    <p class="step-hint">The bot asks 6 questions covering CGPA, tech stack, projects, internships, communication, and open-source. Answer naturally — the LLM handles the rest.</p>
+    <div class="chat-area" id="chat-area"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-in" placeholder="Type your answer…" onkeydown="if(event.key==='Enter') sendMsg()" />
+      <button class="send-btn" id="send-btn" onclick="sendMsg()">Send ↗</button>
+    </div>
+    <div class="cta-row">
+      <button class="cta-btn cta-secondary" onclick="resetChat()">↺ Restart</button>
+      <button class="cta-btn cta-primary" id="next1-btn" onclick="switchTab(2)" disabled>Next: Extract Profile →</button>
+    </div>
+  </div>
+
+  <!-- Panel 2: Extraction -->
+  <div class="panel" id="panel-2">
+    <p class="step-hint">The LLM reads your entire chat conversation and extracts a structured JSON profile. This is the bridge between unstructured chat and the quantitative regression engine.</p>
+    <div class="alert alert-info" id="extract-status">Complete the chat in Step 1 first.</div>
+    <p class="section-title">Extracted Profile JSON</p>
+    <div class="json-box" id="json-display">{}</div>
+    <div class="cta-row">
+      <button class="cta-btn cta-primary" id="extract-btn" onclick="runExtraction()" disabled>
+        Extract via LLM ↗
+      </button>
+      <button class="cta-btn cta-secondary" id="next2-btn" onclick="switchTab(3)" disabled>Next: Score →</button>
+    </div>
+  </div>
+
+  <!-- Panel 3: Score -->
+  <div class="panel" id="panel-3">
+    <p class="step-hint">A regression model (trained on historical placement data from seniors) converts your profile features into a Readiness Score from 0–100, with per-dimension breakdown.</p>
+    <div class="alert alert-info" id="score-status">Extract your profile in Step 2 first.</div>
+    <div id="score-output" style="display:none;">
+      <div class="score-display">
+        <div class="score-ring-wrap">
+          <svg viewBox="0 0 170 170" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="85" cy="85" r="72" fill="none" stroke="#E6E6F0" stroke-width="13"/>
+            <circle id="score-arc" cx="85" cy="85" r="72" fill="none" stroke="#7F77DD"
+              stroke-width="13" stroke-linecap="round"
+              stroke-dasharray="452.4" stroke-dashoffset="452.4"
+              transform="rotate(-90 85 85)" style="transition: stroke-dashoffset 1.4s ease;"/>
+          </svg>
+          <div class="score-number" id="score-num">0</div>
+        </div>
+        <div class="score-verdict" id="score-verdict"></div>
+        <div class="score-desc" id="score-desc"></div>
+      </div>
+      <div class="score-breakdown" id="score-breakdown"></div>
+    </div>
+    <div class="cta-row">
+      <button class="cta-btn cta-primary" id="score-btn" onclick="runScoring()" disabled>Run Regression Model ↗</button>
+      <button class="cta-btn cta-secondary" id="next3-btn" onclick="switchTab(4)" disabled>Next: Experiences →</button>
+    </div>
+  </div>
+
+  <!-- Panel 4: RAG -->
+  <div class="panel" id="panel-4">
+    <p class="step-hint">Based on your tech stack keywords, the system retrieves the top-N most semantically similar senior interview experiences from the vector database using cosine similarity.</p>
+    <div class="alert alert-info" id="rag-status">Generate your score in Step 3 first.</div>
+    <div class="rag-grid" id="rag-results"></div>
+    <div class="cta-row">
+      <button class="cta-btn cta-primary" id="rag-btn" onclick="runRAG()" disabled>Retrieve Experiences ↗</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const API_URL = "https://api.anthropic.com/v1/messages";
+const MODEL   = "claude-sonnet-4-20250514";
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let chatHistory  = [];   // [{role, content}]
+let profile      = null; // extracted JSON
+let scoreData    = null; // regression result
+let qIdx         = 0;
+let chatComplete = false;
+
+// ─── CHAT QUESTIONS ───────────────────────────────────────────────────────────
+const QUESTIONS = [
+  "Hi! I'm your placement readiness assistant. Let's build your profile step by step.\n\nFirst — what's your current CGPA? (out of 10)",
+  "What's your primary tech stack? (e.g. Python + FastAPI, React + Node.js, Java Spring Boot, etc.)",
+  "How many significant projects have you built? Give a quick description of 1–2 of them.",
+  "Have you done any internships? If yes — how many, and at what type of company? (startup / mid-size / FAANG-tier)",
+  "On a scale of 1–10, how would you rate your communication skills? Think presentations, mock interviews, and team discussions.",
+  "Any open-source experience? (GitHub contributions, personal OSS projects, hackathons, etc.)"
+];
+
+// ─── SENIOR EXPERIENCE DATABASE (simulated vector DB) ─────────────────────────
+const EXPERIENCE_DB = [
+  {
+    name: "Arjun Sharma", company: "Google (SWE Intern)", batch: "2024",
+    tags: ["Python", "System Design", "LeetCode", "DSA"],
+    snippet: "I was asked 2 medium LeetCode problems in the coding round — one on graphs (BFS/DFS) and one on DP. The key was explaining my thought process aloud. The system design round asked me to design a URL shortener. CGPA didn't come up at all — they cared about problem-solving clarity.",
+    vectorKeys: ["python", "backend", "google", "dsa", "system design"]
+  },
+  {
+    name: "Priya Mehta", company: "Microsoft (Intern → FTE)", batch: "2024",
+    tags: ["C#", ".NET", "Azure", "Behavioral"],
+    snippet: "Microsoft's process had 4 rounds — 2 coding + 1 design + 1 HR. The coding questions were straightforward if you've done 200+ LeetCode problems. The design round was open-ended (design a notification system). They heavily stressed behavioral questions using the STAR method. Communication was the differentiator for me.",
+    vectorKeys: ["azure", "cloud", "backend", "microsoft", "behavioral"]
+  },
+  {
+    name: "Rohan Das", company: "Flipkart (SDE-1)", batch: "2023",
+    tags: ["Java", "Spring Boot", "Microservices", "OOPs"],
+    snippet: "Flipkart's process is very OOPs and LLD heavy. They asked me to design a parking lot and an elevator system from scratch. Know your design patterns — especially Factory, Observer, and Strategy. They also asked about Java concurrency. My internship at a startup was a big plus — it showed I could ship real code.",
+    vectorKeys: ["java", "spring", "backend", "oop", "microservices", "lld"]
+  },
+  {
+    name: "Sneha Iyer", company: "Amazon (SDE-1)", batch: "2024",
+    tags: ["Python", "AWS", "Leadership Principles", "DSA"],
+    snippet: "Amazon is unique because of its 16 Leadership Principles. Every round has a behavioral component. Prepare 3–4 STAR stories for each LP. Coding was standard — arrays, trees, graphs. HLD round asked me to design Amazon's cart service. My open-source contributions on GitHub genuinely impressed the interviewer.",
+    vectorKeys: ["python", "aws", "amazon", "cloud", "backend", "open source"]
+  },
+  {
+    name: "Karan Patel", company: "Razorpay (SDE-1)", batch: "2023",
+    tags: ["React", "Node.js", "System Design", "Fintech"],
+    snippet: "Razorpay's full-stack round was intense. They gave me a take-home assignment — build a mini payment dashboard in React with a Node.js backend. Then a live code review where they dissected every decision. Knowing about webhooks, idempotency, and payment flows helped massively. Projects on your resume must be production-quality.",
+    vectorKeys: ["react", "node", "javascript", "frontend", "fullstack", "fintech"]
+  },
+  {
+    name: "Aditi Nair", company: "Atlassian (SWE)", batch: "2024",
+    tags: ["Python", "Golang", "Distributed Systems", "Open Source"],
+    snippet: "Atlassian values open-source contributions more than any company I've seen — they literally ask you to walk through your GitHub. The technical rounds focused on distributed systems: CAP theorem, consensus algorithms, eventual consistency. My GSoC project was a major talking point. Communication skills matter a lot here.",
+    vectorKeys: ["python", "golang", "open source", "distributed", "backend", "gsoc"]
+  },
+  {
+    name: "Vikram Reddy", company: "Swiggy (SDE-1)", batch: "2023",
+    tags: ["React", "Redux", "GraphQL", "Frontend Performance"],
+    snippet: "Swiggy's frontend round was super practical — they gave me a broken React component and asked me to debug and optimize it live. Questions on React lifecycle, hooks, and performance optimization (memo, useMemo, lazy loading). Also asked about their specific domain — how would you optimize image loading for a food delivery app? Domain knowledge = big points.",
+    vectorKeys: ["react", "javascript", "frontend", "performance", "graphql", "node"]
+  },
+  {
+    name: "Meghna Joshi", company: "Zeta (Intern → Full-time)", batch: "2024",
+    tags: ["Java", "Kafka", "Redis", "Backend Scale"],
+    snippet: "Zeta interviews for scale. Every coding question had a follow-up: 'what if this had to handle 1M requests/second?' Know caching (Redis), message queues (Kafka), and database sharding. My internship project at a fintech startup gave me real examples to reference. CGPA was barely discussed — project depth was everything.",
+    vectorKeys: ["java", "kafka", "redis", "backend", "scale", "database"]
+  }
+];
+
+// ─── REGRESSION MODEL (deterministic simulation) ──────────────────────────────
+// Simulates a trained Ridge Regression model with feature weights.
+// In production, this would be a real scikit-learn/TensorFlow model.
+function regressionModel(p) {
+  // Feature weights derived from "training on senior placement data"
+  const W = {
+    cgpa:          { weight: 18, max: 10, label: "CGPA"              },
+    projects:      { weight: 20, max: 5,  label: "Projects"          },
+    internships:   { weight: 22, max: 4,  label: "Internships"       },
+    communication: { weight: 15, max: 10, label: "Communication"     },
+    opensource:    { weight: 15, max: 5,  label: "Open Source"       },
+    techstack:     { weight: 10, max: 5,  label: "Tech Stack Depth"  },
+  };
+  const bias = 5;
+  let total = bias;
+  const breakdown = [];
+
+  for (const [key, cfg] of Object.entries(W)) {
+    let raw = parseFloat(p[key]) || 0;
+    raw = Math.min(raw, cfg.max);
+    const contribution = (raw / cfg.max) * cfg.weight;
+    total += contribution;
+    breakdown.push({
+      label: cfg.label,
+      raw,
+      max: cfg.max,
+      contribution: Math.round(contribution * 10) / 10,
+      pct: Math.round((raw / cfg.max) * 100),
+    });
+  }
+
+  return { score: Math.min(100, Math.round(total)), breakdown };
+}
+
+// ─── UTILITY ──────────────────────────────────────────────────────────────────
+function switchTab(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById(`panel-${i}`).classList.toggle('active', i === n);
+    const tab = document.getElementById(`tab-${i}`);
+    tab.classList.remove('active');
+    if (i === n) tab.classList.add('active');
+  });
+}
+
+function appendMsg(role, text) {
+  const area = document.getElementById('chat-area');
+  const isUser = role === 'user';
+  const div = document.createElement('div');
+  div.className = `msg ${isUser ? 'user' : 'bot'}`;
+  div.innerHTML = `
+    <div class="avatar ${isUser ? 'user-av' : 'bot-av'}">${isUser ? 'ME' : 'AI'}</div>
+    <div class="bubble">${text.replace(/\n/g, '<br>')}</div>
+  `;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function showTyping() {
+  const area = document.getElementById('chat-area');
+  const div = document.createElement('div');
+  div.className = 'msg bot'; div.id = 'typing-ind';
+  div.innerHTML = `<div class="avatar bot-av">AI</div>
+    <div class="bubble typing"><span></span><span></span><span></span></div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+function hideTyping() {
+  const el = document.getElementById('typing-ind');
+  if (el) el.remove();
+}
+
+function syntaxHighlight(json) {
+  return JSON.stringify(json, null, 2)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/("(\w+)")\s*:/g, '<span class="json-key">$1</span>:')
+    .replace(/:\s*(".*?")/g, ': <span class="json-str">$1</span>')
+    .replace(/:\s*(\d+\.?\d*)/g, ': <span class="json-num">$1</span>')
+    .replace(/:\s*(true|false)/g, ': <span class="json-bool">$1</span>');
+}
+
+// ─── CHAT FLOW ────────────────────────────────────────────────────────────────
+function initChat() {
+  document.getElementById('chat-area').innerHTML = '';
+  chatHistory = []; qIdx = 0; chatComplete = false; profile = null; scoreData = null;
+  document.getElementById('send-btn').disabled = false;
+  document.getElementById('next1-btn').disabled = true;
+  document.getElementById('extract-btn').disabled = true;
+  document.getElementById('score-btn').disabled = true;
+  document.getElementById('rag-btn').disabled = true;
+  document.getElementById('next2-btn').disabled = true;
+  document.getElementById('next3-btn').disabled = true;
+  document.getElementById('json-display').innerHTML = '{}';
+  document.getElementById('score-output').style.display = 'none';
+  document.getElementById('rag-results').innerHTML = '';
+  document.getElementById('extract-status').textContent = 'Complete the chat in Step 1 first.';
+  document.getElementById('extract-status').className = 'alert alert-info';
+  document.getElementById('score-status').textContent = 'Extract your profile in Step 2 first.';
+  document.getElementById('score-status').className = 'alert alert-info';
+  document.getElementById('rag-status').textContent = 'Generate your score in Step 3 first.';
+  document.getElementById('rag-status').className = 'alert alert-info';
+  ['tab-2','tab-3','tab-4'].forEach(t => document.getElementById(t).classList.remove('done'));
+  setTimeout(() => appendMsg('bot', QUESTIONS[0]), 500);
+}
+
+function resetChat() { initChat(); }
+
+async function sendMsg() {
+  const input = document.getElementById('chat-in');
+  const btn   = document.getElementById('send-btn');
+  const text  = input.value.trim();
+  if (!text || chatComplete) return;
+  input.value = '';
+  btn.disabled = true;
+  appendMsg('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  qIdx++;
+
+  if (qIdx < QUESTIONS.length) {
+    showTyping();
+    await sleep(700 + Math.random() * 400);
+    hideTyping();
+    appendMsg('bot', QUESTIONS[qIdx]);
+    chatHistory.push({ role: 'assistant', content: QUESTIONS[qIdx] });
+    btn.disabled = false;
+    document.getElementById('chat-in').focus();
+  } else {
+    // All questions answered
+    showTyping();
+    await sleep(900);
+    hideTyping();
+    const closing = "Perfect! I have everything I need. Proceed to Step 2 to extract your structured profile.";
+    appendMsg('bot', closing);
+    chatHistory.push({ role: 'assistant', content: closing });
+    chatComplete = true;
+    document.getElementById('next1-btn').disabled = false;
+    document.getElementById('extract-btn').disabled = false;
+    document.getElementById('extract-status').textContent = 'Chat complete! Click "Extract via LLM" below.';
+    document.getElementById('extract-status').className = 'alert alert-success';
+    document.getElementById('tab-1').classList.add('done');
+  }
+}
+
+// ─── STEP 2: LLM EXTRACTION ───────────────────────────────────────────────────
+async function runExtraction() {
+  const btn = document.getElementById('extract-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Extracting…';
+  document.getElementById('json-display').innerHTML = 'Calling LLM…';
+
+  // Build the conversation transcript
+  const transcript = chatHistory.map(m =>
+    `${m.role === 'user' ? 'Student' : 'Bot'}: ${m.content}`
+  ).join('\n');
+
+  const systemPrompt = `You are a structured data extractor. Given a chat transcript between a placement bot and a student, extract the student's profile into a JSON object.
+
+Return ONLY valid JSON with these exact keys:
+{
+  "cgpa": <number 0-10>,
+  "tech_stack": <array of strings>,
+  "projects": <number of projects>,
+  "project_descriptions": <array of short strings>,
+  "internships": <number>,
+  "internship_level": <"none" | "startup" | "mid-size" | "faang">,
+  "communication": <number 1-10>,
+  "opensource": <number 0-5, estimate based on description>,
+  "opensource_details": <string>,
+  "techstack_score": <number 1-5, estimate depth from tech stack complexity>
+}
+
+Infer numeric values from context. Return ONLY the JSON object, no explanation.`;
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: `Here is the chat transcript:\n\n${transcript}` }]
+      })
+    });
+    const data = await res.json();
+    const raw  = data.content?.[0]?.text || '{}';
+    // Strip markdown fences if present
+    const clean = raw.replace(/```json|```/g, '').trim();
+    profile = JSON.parse(clean);
+    document.getElementById('json-display').innerHTML = syntaxHighlight(profile);
+    document.getElementById('extract-status').textContent = 'Profile extracted successfully.';
+    document.getElementById('extract-status').className = 'alert alert-success';
+    document.getElementById('score-btn').disabled = false;
+    document.getElementById('score-status').textContent = 'Profile ready. Click "Run Regression Model".';
+    document.getElementById('score-status').className = 'alert alert-success';
+    document.getElementById('next2-btn').disabled = false;
+    document.getElementById('tab-2').classList.add('done');
+  } catch (err) {
+    document.getElementById('json-display').textContent = 'Error: ' + err.message;
+    document.getElementById('extract-status').textContent = 'Extraction failed. Check your API key or try again.';
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Re-Extract ↗';
+}
+
+// ─── STEP 3: REGRESSION SCORING ───────────────────────────────────────────────
+async function runScoring() {
+  if (!profile) return;
+  const btn = document.getElementById('score-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Running model…';
+
+  await sleep(800); // simulate model inference
+
+  // Map extracted JSON to model features
+  const features = {
+    cgpa:          profile.cgpa          || 0,
+    projects:      Math.min(profile.projects || 0, 5),
+    internships:   (() => {
+      const n = profile.internships || 0;
+      const lvl = profile.internship_level || 'none';
+      if (n === 0) return 0;
+      const bonus = lvl === 'faang' ? 1 : lvl === 'mid-size' ? 0.5 : 0;
+      return Math.min(n + bonus, 4);
+    })(),
+    communication: profile.communication  || 0,
+    opensource:    profile.opensource     || 0,
+    techstack:     profile.techstack_score || 3,
+  };
+
+  scoreData = regressionModel(features);
+  renderScore(scoreData);
+  document.getElementById('score-output').style.display = 'block';
+  document.getElementById('score-status').style.display = 'none';
+  document.getElementById('rag-btn').disabled = false;
+  document.getElementById('rag-status').textContent = 'Score generated! Click "Retrieve Experiences".';
+  document.getElementById('rag-status').className = 'alert alert-success';
+  document.getElementById('next3-btn').disabled = false;
+  document.getElementById('tab-3').classList.add('done');
+
+  btn.disabled = false;
+  btn.innerHTML = 'Recalculate ↗';
+}
+
+function renderScore({ score, breakdown }) {
+  // Animate ring
+  const circumference = 452.4;
+  const offset = circumference - (score / 100) * circumference;
+  const arc = document.getElementById('score-arc');
+  const numEl = document.getElementById('score-num');
+  setTimeout(() => { arc.style.strokeDashoffset = offset; }, 100);
+
+  // Animate number counter
+  let current = 0;
+  const step  = Math.ceil(score / 40);
+  const timer = setInterval(() => {
+    current = Math.min(current + step, score);
+    numEl.textContent = current;
+    if (current >= score) clearInterval(timer);
+  }, 30);
+
+  // Color based on score
+  const color = score >= 75 ? '#1D9E75' : score >= 55 ? '#7F77DD' : score >= 35 ? '#BA7517' : '#D85A30';
+  arc.style.stroke = color;
+
+  // Verdict
+  const verdict = score >= 80 ? '🎯 Interview Ready' :
+                  score >= 65 ? '✅ Strong Profile'  :
+                  score >= 45 ? '📈 Needs Growth'    : '🛠 Foundation Stage';
+  const desc    = score >= 80 ? 'You\'re competitive for top-tier companies. Apply now.' :
+                  score >= 65 ? 'Good profile. Address the weaker dimensions before applying.' :
+                  score >= 45 ? 'Focus on internships and project depth before top-tier applications.' :
+                  'Build your fundamentals — CGPA, projects, and internship experience.';
+
+  document.getElementById('score-verdict').textContent = verdict;
+  document.getElementById('score-desc').textContent    = desc;
+
+  // Breakdown cards
+  const bar_colors = ['#7F77DD','#1D9E75','#534AB7','#0F6E56','#BA7517','#D85A30'];
+  const container  = document.getElementById('score-breakdown');
+  container.innerHTML = breakdown.map((d, i) => `
+    <div class="score-card">
+      <div class="sc-label">${d.label}</div>
+      <div class="sc-value">${d.raw} / ${d.max}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width: ${d.pct}%; background: ${bar_colors[i % bar_colors.length]};"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── STEP 4: RAG RETRIEVAL ────────────────────────────────────────────────────
+async function runRAG() {
+  if (!profile) return;
+  const btn = document.getElementById('rag-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Retrieving…';
+  document.getElementById('rag-status').style.display = 'none';
+
+  await sleep(600);
+
+  // Simulate cosine similarity: count matching vectorKeys with user's tech stack
+  const userStack = (profile.tech_stack || []).map(t => t.toLowerCase());
+  const userOSS   = profile.opensource > 1;
+
+  const scored = EXPERIENCE_DB.map(exp => {
+    let sim = 0;
+    for (const key of exp.vectorKeys) {
+      if (userStack.some(t => t.includes(key) || key.includes(t))) sim += 2;
+      if (key === 'open source' && userOSS) sim += 1;
+    }
+    // Normalize similarity to 60–99%
+    const pct = Math.min(99, 60 + sim * 4 + Math.floor(Math.random() * 5));
+    return { ...exp, similarity: pct };
+  });
+
+  // Sort by similarity and take top 4
+  const topK = scored.sort((a, b) => b.similarity - a.similarity).slice(0, 4);
+
+  const container = document.getElementById('rag-results');
+  container.innerHTML = topK.map(exp => `
+    <div class="exp-card">
+      <div class="exp-header">
+        <div class="exp-meta">
+          <div class="exp-name">${exp.name} — Batch ${exp.batch}</div>
+          <div class="exp-company">${exp.company}</div>
+        </div>
+        <div class="sim-badge">⟨v⟩ ${exp.similarity}% match</div>
+      </div>
+      <div class="tags">${exp.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+      <div class="exp-snippet">"${exp.snippet}"</div>
+    </div>
+  `).join('');
+
+  document.getElementById('tab-4').classList.add('done');
+  btn.disabled = false;
+  btn.innerHTML = 'Re-retrieve ↗';
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+initChat();
+</script>
+</body>
+</html>
